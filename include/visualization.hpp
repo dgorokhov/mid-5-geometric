@@ -1,6 +1,9 @@
+
+#include <span>
+
 #include "geometry.hpp"
 #include "triangulation.hpp"
-#include <span>
+
 
 namespace geometry::visualization {
 

@@ -236,37 +236,37 @@ struct ShapeToShapeDistanceVisitor {
 };
 
 
-/*
-* Функции-помощники
-*/
-inline double DistanceToPoint(const Shape &shape, const Point2D &point) {
+//Функции-помощники
 
-    /* ваш код с PointToShapeDistanceVisitor здесь*/
-    return 0.0;
+// 1. Поиск расстояния от любой фигуры до точки
+[[nodiscard]] inline double DistanceToPoint(const Shape &shape, const Point2D &point) noexcept {
+    return std::visit(PointToShapeDistanceVisitor{point}, shape);
 }
 
-inline BoundingBox GetBoundBox(const Shape &shape) {
-
-    /* ваш код с использованием метода BoundBox() здесь */
-    return {};
+// 2. Получение BoundingBox для любой фигуры
+[[nodiscard]] inline BoundingBox GetBoundBox(const Shape &shape) noexcept {
+    return std::visit([](const auto &s) -> BoundingBox {
+        return s.BoundBox();
+    }, shape);
 }
 
-inline double GetHeight(const Shape &shape) {
-
-    /* ваш код с использованием метода Height() здесь */
-    return 0.0;
+// 3. Получение максимальной высоты (Y-координаты) фигуры
+[[nodiscard]] inline double GetHeight(const Shape &shape) noexcept {
+    return std::visit([](const auto &s) -> double {
+        return s.Height();
+    }, shape);
 }
 
-inline bool BoundingBoxesOverlap(const Shape &shape1, const Shape &shape2) {
-   BoundingBox bb1 = GetBoundBox(shape1);
-    BoundingBox bb2 = GetBoundBox(shape2);
-    return bb1.Overlaps(bb2);
+// 4. Проверка пересечения BoundingBox'ов двух фигур
+[[nodiscard]] inline bool BoundingBoxesOverlap(const Shape &shape1, const Shape &shape2) noexcept {
+    BoundingBox box1 = GetBoundBox(shape1);
+    BoundingBox box2 = GetBoundBox(shape2);
+    return box1.Overlaps(box2);
 }
 
-std::optional<double> DistanceBetweenShapes(const Shape &shape1, const Shape &shape2) {
-
-    /* ваш код с ShapeToShapeDistanceVisitor здесь*/
-    return std::nullopt;
+// 5. Расстояние между двумя любыми фигурами (через ShapeToShapeDistanceVisitor)
+[[nodiscard]] inline std::optional<double> DistanceBetweenShapes(const Shape &shape1, const Shape &shape2) noexcept {
+    return std::visit(ShapeToShapeDistanceVisitor{}, shape1, shape2);
 }
 
 }  // namespace geometry::queries
