@@ -53,12 +53,28 @@ struct RawData {
     std::vector<double> values;
 };
 
-// Имитация функции парсинга строки, возвращающей optional с данными
+// Реальная функция парсинга параметров из строки
 std::optional<RawData> ExtractRawData(std::string_view input) {
-    // В реальном коде здесь будет разбор строки. Пока возвращаем пустой заглушечный результат.
-    return RawData{};
+    RawData data;
+    
+    // Создаем поток из строки для удобного чтения чисел через оператор >>
+    std::stringstream ss((std::string(input)));
+    double value;
+    
+    // Читаем все числа, разделенные пробелами, пока поток не закончится
+    while (ss >> value) {
+        data.values.push_back(value);
+    }
+    
+    // Если мы ничего не смогли распарсить (или строка была пустой/битой), 
+    // возвращаем nullopt, чтобы сработала монадическая защита
+    if (data.values.empty()) {
+        return std::nullopt;
+    }
+    
+    return data;
 }
-
+/*
 // Реализация MakeCircle через монады (.transform возвращает optional<Shape>)
 std::optional<Shape> MakeCircle(std::string_view input) {
     return ExtractRawData(input)
@@ -140,4 +156,77 @@ std::vector<Shape> ParseShapes(std::string_view input) {
     }
     return result;
 }
+
+*/
+
+
+// Обновленный монадический диспетчер парсинга одной фигуры
+std::optional<Shape> ParseSingleShape(std::string_view type, std::string_view params) {
+    auto data_opt = ExtractRawData(params);
+    if (!data_opt.has_value()) return std::nullopt;
+    
+    const auto& data = data_opt.value();
+
+    if (type == "circle" && data.values.size() >= 3) {
+        double radius = data.values[2];
+        if (radius < 0) return std::nullopt; // Игнорируем отрицательный радиус по ТЗ
+        return Circle{Point2D{data.values[0], data.values[1]}, radius};
+    }
+    if (type == "line" && data.values.size() >= 4) {
+        return Line{Point2D{data.values[0], data.values[1]}, Point2D{data.values[2], data.values[3]}};
+    }
+    if (type == "triangle" && data.values.size() >= 6) {
+        return Triangle{Point2D{data.values[0], data.values[1]}, 
+                        Point2D{data.values[2], data.values[3]}, 
+                        Point2D{data.values[4], data.values[5]}};
+    }
+    if (type == "rectangle" && data.values.size() >= 3) {
+        double w = data.values[2];
+        double h = data.values.size() >= 4 ? data.values[3] : w; // если не задана высота, делаем квадрат
+        return Rectangle{Point2D{data.values[0], data.values[1]}, w, h};
+    }
+    if (type == "polygon" && data.values.size() >= 3) {
+        return RegularPolygon{Point2D{data.values[0], data.values[1]}, data.values[2], 
+                              data.values.size() >= 4 ? static_cast<int>(data.values[3]) : 5};
+    }
+    
+    return std::nullopt; 
+}
+
+// РЕАЛЬНАЯ функция разбиения строки на токены через C++20 Ranges
+std::vector<Shape> ParseShapes(std::string_view input) {
+    std::vector<Shape> result;
+
+    // Разбиваем строку на подстроки по разделителю ';' с помощью C++20 views::split
+    auto tokens = input | std::views::split(';');
+
+    for (auto token : tokens) {
+        // Конвертируем subrange обратно в string_view
+        std::string_view token_view(token.data(), token.size());
+        
+        // Убираем лишние пробелы в начале, если они есть
+        while (!token_view.empty() && token_view.front() == ' ') {
+            token_view.remove_prefix(1);
+        }
+        if (token_view.empty()) continue;
+
+        // Ищем первый пробел, разделяющий тип фигуры и её параметры
+        size_t space_pos = token_view.find(' ');
+        if (space_pos == std::string_view::npos) {
+            continue; // Пропускаем битые строки вроде "badshape" без параметров
+        }
+
+        std::string_view type = token_view.substr(0, space_pos);
+        std::string_view params = token_view.substr(space_pos + 1);
+
+        // Монадически пытаемся распарсить фигуру
+        auto single_shape = ParseSingleShape(type, params);
+        if (single_shape.has_value()) {
+            result.push_back(single_shape.value());
+        }
+    }
+
+    return result;
+}
+
 }  // namespace geometry::utils

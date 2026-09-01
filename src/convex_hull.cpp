@@ -45,7 +45,8 @@ struct Point2D {
     }
 };
 
-template <size_t N>struct Lines2D {
+template <size_t N>
+struct Lines2D {
     std::array<double, N> x;
     std::array<double, N> y;
 };
