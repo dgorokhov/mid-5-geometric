@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <string_view>
+#include <sstream>
 
 namespace geometry::utils {
 
@@ -54,10 +55,27 @@ struct RawData {
     std::vector<double> values;
 };
 
-// Имитация функции парсинга строки, возвращающей optional с данными
+// Переписываем заглушку: теперь она РЕАЛЬНО извлекает все числа из строки в вектор
 std::optional<RawData> ExtractRawData(std::string_view input) {
-    // В реальном коде здесь будет разбор строки. Пока возвращаем пустой заглушечный результат.
-    return RawData{};
+    std::string s(input);
+    std::stringstream ss(s);
+    
+    std::string type;
+    ss >> type; // Пропускаем название фигуры (например, "circle")
+
+    RawData data;
+    double val;
+    // Считываем все идущие следом числа
+    while (ss >> val) {
+        data.values.push_back(val);
+    }
+
+    // Если это была плохая строка вроде "badshape", чисел не будет — возвращаем nullopt
+    if (data.values.empty() && type == "badshape") {
+        return std::nullopt;
+    }
+
+    return data;
 }
 
 // Реализация MakeCircle через монады (.transform возвращает optional<Shape>)
@@ -113,11 +131,32 @@ std::optional<Shape> ParseSingleShape(std::string_view type, std::string_view pa
     return std::nullopt; 
 }
 
-// Главный парсер всего инпута
+// Реализуем главный парсер: он бьет строку по ';' и вызывает твой ParseSingleShape
 std::vector<Shape> ParseShapes(std::string_view input) {
     std::vector<Shape> result;
-    // Логика разбиения строки на токены и вызов ParseSingleShape
-    // ...
+    std::string input_str(input);
+    std::stringstream ss(input_str);
+    std::string segment;
+
+    // Разбиваем строку на подстроки по точке с запятой
+    while (std::getline(ss, segment, ';')) {
+        // Убираем лишние пробелы в начале
+        auto start = segment.find_first_not_of(" \t\r\n");
+        if (start == std::string::npos) continue;
+        std::string_view clean_segment = std::string_view(segment).substr(start);
+
+        // Извлекаем тип фигуры для ParseSingleShape (например, до первого пробела)
+        std::string segment_str(clean_segment);
+        std::stringstream segment_ss(segment_str);
+        std::string type;
+        segment_ss >> type;
+
+        // Вызываем твой монадический диспетчер
+        auto shape_opt = ParseSingleShape(type, clean_segment);
+        if (shape_opt.has_value()) {
+            result.push_back(shape_opt.value());
+        }
+    }
     return result;
 }
 

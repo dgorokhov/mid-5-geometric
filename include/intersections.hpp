@@ -18,7 +18,7 @@ public:
         const double x4 = l2.end.x,   y4 = l2.end.y;
 
         const double denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-        if (std::abs(denom) < 1e-9) {
+        if (std::abs(denom) < EPSILON_GEOM) {
             return std::nullopt; // Прямые параллельны или совпадают
         }
 
@@ -43,7 +43,7 @@ public:
         const double x4 = l2.end.x,   y4 = l2.end.y;
 
         const double denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-        if (std::abs(denom) < 1e-9) {
+        if (std::abs(denom) < EPSILON_GEOM) {
             return std::nullopt;
         }
 
@@ -85,7 +85,7 @@ public:
         const double d = c1.center_p.DistanceTo(c2.center_p);
         
         // Нет пересечений или одна окружность внутри другой, либо совпадают
-        if (d > c1.radius + c2.radius || d < std::abs(c1.radius - c2.radius) || d < 1e-9) {
+        if (d > c1.radius + c2.radius || d < std::abs(c1.radius - c2.radius) || d < EPSILON_GEOM) {
             return std::nullopt;
         }
 

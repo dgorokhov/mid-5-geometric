@@ -2,10 +2,8 @@
 #include <optional>
 #include <vector>
 #include <utility>
-#include <algorithm>
-#include <stdexcept>
 #include <string_view>
-
+#include <sstream>
 #include "queries.hpp"
 
 namespace geometry::utils {
@@ -114,12 +112,32 @@ std::optional<Shape> ParseSingleShape(std::string_view type, std::string_view pa
     return std::nullopt; // Если тип неизвестен, летит пустой optional
 }
 
-// Главный парсер всего инпута
+// Реализуем главный парсер: он бьет строку по ';' и вызывает твой ParseSingleShape
 std::vector<Shape> ParseShapes(std::string_view input) {
     std::vector<Shape> result;
-    // Логика разбиения строки на токены и вызов ParseSingleShape
-    // ...
+    std::string input_str(input);
+    std::stringstream ss(input_str);
+    std::string segment;
+
+    // Разбиваем строку на подстроки по точке с запятой
+    while (std::getline(ss, segment, ';')) {
+        // Убираем лишние пробелы в начале
+        auto start = segment.find_first_not_of(" \t\r\n");
+        if (start == std::string::npos) continue;
+        std::string_view clean_segment = std::string_view(segment).substr(start);
+
+        // Извлекаем тип фигуры для ParseSingleShape (например, до первого пробела)
+        std::string segment_str(clean_segment);
+        std::stringstream segment_ss(segment_str);
+        std::string type;
+        segment_ss >> type;
+
+       //монадический диспетчер
+        auto shape_opt = ParseSingleShape(type, clean_segment);
+        if (shape_opt.has_value()) {
+            result.push_back(shape_opt.value());
+        }
+    }
     return result;
 }
-
 }  // namespace geometry::utils

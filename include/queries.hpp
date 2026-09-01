@@ -161,7 +161,7 @@ struct PointInShapeVisitor {
         Point2D point_vec = point - line.start;
 
         double cross = point_vec.Cross(line_vec);
-        if (std::abs(cross) > 1e-10) {
+        if (std::abs(cross) > EPSILON_TRIANG) {
             return false;
         }
 

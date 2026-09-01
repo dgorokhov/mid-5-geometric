@@ -8,7 +8,11 @@
 #include <variant>
 #include <vector>
 
+
 namespace geometry {
+
+    inline constexpr double EPSILON_GEOM = 1e-9;
+    inline constexpr double EPSILON_TRIANG = 1e-10;
 
 /*
 * Добавьте к методам класса Point2D и Lines2DDyn все необходимые аттрибуты и спецификаторы
@@ -17,10 +21,8 @@ namespace geometry {
 struct Point2D {
     double x, y;
 
-    //constexpr 
-    Point2D() : x(0), y(0) {}
-    //constexpr 
-    Point2D(double x, double y) : x(x), y(y) {}
+    constexpr Point2D() : x(0), y(0) {}
+    constexpr Point2D(double x, double y) : x(x), y(y) {}
 
     // Comparison
     bool operator<(const Point2D &other) { return x < other.x && y < other.y; }
