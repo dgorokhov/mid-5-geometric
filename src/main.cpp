@@ -25,7 +25,6 @@ template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 void PrintAllIntersections(const Shape &shape, std::span<const Shape> others) {
     std::println("\n=== Intersections ===");
-
     // Оставляем только те фигуры, которые поддерживают вычисление пересечений (Line и Circle)
     // По ТЗ остальные комбинации вызывают std::logic_error, отлавливаем их или фильтруем
     for (const auto &other : others) {
@@ -129,8 +128,6 @@ int main() {
     // Ждем нажатия Enter для перехода ко второму графику
     std::println("\nНажмите Enter, чтобы построить второй график (Выпуклая оболочка)...");
     std::cin.get();
-
-    // Формируем список из вершин всех фигур с использованием std::visit
     std::vector<Point2D> points;
     for (const auto &shape : shapes) {
         std::visit(overloaded {
@@ -143,26 +140,16 @@ int main() {
             [](const BoundingBox &) {} // У BB вершины опускаем или берем углы при необходимости
         }, shape);
     }
-
     // Находим список точек для построения выпуклой оболочки алгоритмом Грэхема
     auto hull_result = convex_hull::GrahamScan(points);
     if (hull_result.has_value()) {
         std::vector<Point2D> hull_vertices = hull_result.value();
-        
-        // Создаем из вершин объект класса RegularPolygon (или кастомный многоугольник, если есть в иерархии)
-        // В ТЗ указан RegularPolygon, передаем параметры центра, радиуса и количества сторон на базе оболочки:
-        RegularPolygon hull_poly{Point2D{0,0}, 1.0, static_cast<int>(hull_vertices.size())};
-        
-        // Добавляем полученную оболочку в массив фигур
+        Polygon hull_poly{hull_vertices};
         shapes.push_back(hull_poly);
-        
-        // Рисуем второй график с добавленной оболочкой
         geometry::visualization::Draw(shapes);
     } else {
         std::println("Не удалось построить выпуклую оболочку: мало точек или вырожденная геометрия.");
     }
-
-    // Ждем нажатия Enter для перехода к третьему графику
     std::println("\nНажмите Enter, чтобы построить третий график (Триангуляция Делоне)...");
     std::cin.get();
 

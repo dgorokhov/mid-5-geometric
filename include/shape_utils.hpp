@@ -185,9 +185,9 @@ std::optional<Shape> ParseSingleShape(std::string_view type, std::string_view pa
         double h = data.values.size() >= 4 ? data.values[3] : w; // если не задана высота, делаем квадрат
         return Rectangle{Point2D{data.values[0], data.values[1]}, w, h};
     }
-    if (type == "polygon" && data.values.size() >= 3) {
+    if (type == "polygon" && data.values.size() >= 3 && data.values[3] >= 4 ) {
         return RegularPolygon{Point2D{data.values[0], data.values[1]}, data.values[2], 
-                              data.values.size() >= 4 ? static_cast<int>(data.values[3]) : 5};
+                              static_cast<int>(data.values[3])};
     }
     
     return std::nullopt; 
