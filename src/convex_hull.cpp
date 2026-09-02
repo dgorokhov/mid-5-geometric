@@ -1,4 +1,3 @@
-#pragma once
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -220,8 +219,6 @@ struct Circle {
     }
 };
 } // namespace geometry
-// Этот код должен находиться в самом низу файла geometry.hpp, 
-// строго ЗА пределами namespace geometry { ... }
 
 template <>
 struct std::formatter<std::vector<geometry::Point2D>> {

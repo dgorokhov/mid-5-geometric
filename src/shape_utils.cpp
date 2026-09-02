@@ -55,7 +55,6 @@ struct RawData {
     std::vector<double> values;
 };
 
-// Переписываем заглушку: теперь она РЕАЛЬНО извлекает все числа из строки в вектор
 std::optional<RawData> ExtractRawData(std::string_view input) {
     std::string s(input);
     std::stringstream ss(s);
@@ -69,8 +68,7 @@ std::optional<RawData> ExtractRawData(std::string_view input) {
     while (ss >> val) {
         data.values.push_back(val);
     }
-
-    // Если это была плохая строка вроде "badshape", чисел не будет — возвращаем nullopt
+   // плохая строка вроде "badshape" == возвращаем nullopt
     if (data.values.empty() && type == "badshape") {
         return std::nullopt;
     }
@@ -120,7 +118,7 @@ std::optional<Shape> MakePolygon(std::string_view input) {
         });
 }
 
-// Пункт 10: Монадический диспетчер парсинга одной фигуры
+//  Монадический диспетчер парсинга одной фигуры
 std::optional<Shape> ParseSingleShape(std::string_view type, std::string_view params) {
     if (type == "circle")    return MakeCircle(params);
     if (type == "line")      return MakeLine(params);
@@ -131,7 +129,7 @@ std::optional<Shape> ParseSingleShape(std::string_view type, std::string_view pa
     return std::nullopt; 
 }
 
-// Реализуем главный парсер: он бьет строку по ';' и вызывает твой ParseSingleShape
+// главный парсер: он бьет строку по ';' и вызывает ParseSingleShape
 std::vector<Shape> ParseShapes(std::string_view input) {
     std::vector<Shape> result;
     std::string input_str(input);

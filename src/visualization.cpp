@@ -45,7 +45,7 @@ void Draw(std::span<geometry::Shape> shapes) {
             [](const Polygon &p) { plot(p.Lines().x, p.Lines().y)->line_width(2).color("cyan"); }
         }, shape);
 
-        // Исправленный вызов получения центра для добавления номера фигуры
+        //получение центра для добавления номера фигуры
         const auto center = std::visit([](auto &&s) { return s.Center(); }, shape);
         
         auto t = text(center.x, center.y, std::to_string(index));
@@ -53,7 +53,7 @@ void Draw(std::span<geometry::Shape> shapes) {
         t->color("black");
     }
 
-    // Автоматическое сохранение графиков на диск по шагам
+    //сохранение графиков на диск по шагам
     static int step_counter = 1;
     std::string file_name = "shapes_" + std::to_string(step_counter++) + "_graph.png";
     fh->save(file_name);

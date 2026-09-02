@@ -74,12 +74,14 @@ GrahamScan(std::span<Point2D> points) noexcept {
         }
         stack.Push(points[i]);
     }
-    // Проверяем вырожденный случай (если все точки оказались на одной прямой, размер оболочки < 3)
-    if (stack.Size() < 3) {
+     // Проверяем вырожденный случай:
+    // Если точек в стеке меньше 3, или если они все лежат на одной прямой
+    if (stack.Size() < 3 || std::abs(CrossProduct(stack.NextToTop(), stack.Top(), points[0])) < 1e-9) {
         return std::unexpected(ConvexHullError::DegenerateGeometry);
     }
 
     return stack.Extract();
+  
 }
 
 }  // namespace geometry::convex_hull

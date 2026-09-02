@@ -13,8 +13,6 @@ TEST(ShapeUtilsTest, FindAllCollisionsAABB) {
 
     std::vector<Shape> shapes = {r1, r2, r3};
     auto collisions = utils::FindAllCollisions(shapes);
-
-    // Должна найтись ровно одна пара пересекающихся Bounding Box
     EXPECT_EQ(collisions.size(), 1);
 }
 
@@ -26,5 +24,5 @@ TEST(ShapeUtilsTest, FindHighestShape) {
     auto highest_idx = utils::FindHighestShape(shapes);
 
     ASSERT_TRUE(highest_idx.has_value());
-    EXPECT_EQ(*highest_idx, 1); // Индекс окружности
+    EXPECT_EQ(*highest_idx, 1);
 }

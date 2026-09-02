@@ -11,14 +11,11 @@ TEST(ConvexHullTest, GrahamScanSuccess) {
         {0.0, 0.0}, {4.0, 0.0}, {4.0, 4.0}, {0.0, 4.0},
         {2.0, 2.0}, {1.0, 1.0}, {3.0, 3.0} // Внутренние точки
     };
-
     auto result = convex_hull::GrahamScan(points);
-    
-    // Проверяем, что std::expected содержит успешный результат
     ASSERT_TRUE(result.has_value());
     
     std::vector<Point2D> hull = result.value();
-    // Оболочкой квадрата должны стать его 4 вершины
+    // Оболочка квадрата== 4 вершины
     EXPECT_EQ(hull.size(), 4);
 }
 
@@ -35,11 +32,8 @@ TEST(ConvexHullTest, TooFewPointsError) {
 
 // Тест обработки ошибки: выроженный вар
 TEST(ConvexHullTest, DegenerateGeom) {
-    std::vector<Point2D> points = {{0.0, 0.0}, {1.0, 1.0}};
-
+    std::vector<Point2D> points = {{1.0, 1.0}, {3.0, 3.0}, {0.0,0.0}};
     auto result = convex_hull::GrahamScan(points);
-    
-    // Должен вернуться std::unexpected со значением TooFewPoints
     ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(result.error(), convex_hull::ConvexHullError::TooFewPoints);
+    EXPECT_EQ(result.error(), convex_hull::ConvexHullError::DegenerateGeometry);
 }
