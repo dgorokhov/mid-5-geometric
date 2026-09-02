@@ -25,8 +25,8 @@ struct Point2D {
     constexpr Point2D(double x, double y) : x(x), y(y) {}
 
     // Comparison
-    bool operator<(const Point2D &other) { return x < other.x && y < other.y; }
-    bool operator==(const Point2D &other) {
+    bool operator<(const Point2D &other) const noexcept { return x < other.x && y < other.y; }
+    bool operator==(const Point2D &other) const noexcept{
         return x == other.x && y == other.y;
     }
 
@@ -234,7 +234,7 @@ public:
     Polygon(std::vector<Point2D> points) noexcept : points_(std::move(points)) { CalculateBoundBox(); }
 
     [[nodiscard]] constexpr BoundingBox BoundBox() const noexcept { return bounding_box_; }
-    [[nodiscard]] constexpr double Height() const noexcept {
+      [[nodiscard]] constexpr double Height() const noexcept {
         const auto box = BoundBox();
         return box.max_y - box.min_y;
     }
