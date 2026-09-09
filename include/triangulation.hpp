@@ -4,6 +4,7 @@
 #include <format>
 #include <set>
 #include <vector>
+#include <expected>
 #include <stdexcept>
 
 namespace geometry::triangulation {
@@ -16,12 +17,12 @@ struct DelaunayTriangle {
     bool ContainsPoint(const Point2D &p) const {
         Point2D center = Circumcenter();
         double radius = Circumradius();
-        return center.DistanceTo(p) <= radius + 1e-10;
+        return center.DistanceTo(p) <= radius + EPSILON_TRIANG;
     }
 
     Point2D Circumcenter() const {
         double d = 2 * (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y));
-        if (std::abs(d) < 1e-10) {
+        if (std::abs(d) < EPSILON_TRIANG) {
             return {(a.x + b.x + c.x) / 3, (a.y + b.y + c.y) / 3};
         }
 
@@ -48,7 +49,7 @@ struct DelaunayTriangle {
         int shared_count = 0;
         for (const Point2D &p1 : this_points) {
             for (const Point2D &p2 : other_points) {
-                if (std::abs(p1.x - p2.x) < 1e-10 && std::abs(p1.y - p2.y) < 1e-10) {
+                if (std::abs(p1.x - p2.x) < EPSILON_TRIANG && std::abs(p1.y - p2.y) < EPSILON_TRIANG) {
                     shared_count++;
                     break;
                 }
@@ -71,31 +72,36 @@ struct Edge {
     }
 
     bool operator<(const Edge &other) const {
-        if (std::abs(p1.x - other.p1.x) > 1e-10)
+        if (std::abs(p1.x - other.p1.x) > EPSILON_TRIANG)
             return p1.x < other.p1.x;
-        if (std::abs(p1.y - other.p1.y) > 1e-10)
+        if (std::abs(p1.y - other.p1.y) > EPSILON_TRIANG)
             return p1.y < other.p1.y;
-        if (std::abs(p2.x - other.p2.x) > 1e-10)
+        if (std::abs(p2.x - other.p2.x) > EPSILON_TRIANG)
             return p2.x < other.p2.x;
         return p2.y < other.p2.y;
     }
 
     bool operator==(const Edge &other) const {
-        return std::abs(p1.x - other.p1.x) < 1e-10 && std::abs(p1.y - other.p1.y) < 1e-10 &&
-               std::abs(p2.x - other.p2.x) < 1e-10 && std::abs(p2.y - other.p2.y) < 1e-10;
+        return std::abs(p1.x - other.p1.x) < EPSILON_TRIANG && std::abs(p1.y - other.p1.y) < EPSILON_TRIANG &&
+               std::abs(p2.x - other.p2.x) < EPSILON_TRIANG && std::abs(p2.y - other.p2.y) < EPSILON_TRIANG;
     }
 };
 
-//Ваш код здесь
-inline std::vector<DelaunayTriangle> DelaunayTriangulation(std::span<const Point2D> points) {
-   if (points.size() < 3) {
-        throw std::logic_error("At least three points are required for triangulation.");
+// Пункт 12: Безопасный алгоритм триангуляции Делоне на std::expected и C++20 Ranges
+
+enum class TriangulationError {
+    TooFewPoints // Меньше 3 точек для триангуляции
+};
+
+[[nodiscard]] inline std::expected<std::vector<DelaunayTriangle>, TriangulationError> 
+DelaunayTriangulation(std::span<const Point2D> points) noexcept {
+    if (points.size() < 3) {
+        return std::unexpected(TriangulationError::TooFewPoints);
     }
 
-    auto [minX, maxX] =
-        std::minmax_element(points.begin(), points.end(), [](const Point2D &a, const Point2D &b) { return a.x < b.x; });
-    auto [minY, maxY] =
-        std::minmax_element(points.begin(), points.end(), [](const Point2D &a, const Point2D &b) { return a.y < b.y; });
+    // Заменяем старые итераторы на чистые C++20 Ranges
+    auto [minX, maxX] = std::ranges::minmax_element(points, [](const Point2D &a, const Point2D &b) noexcept { return a.x < b.x; });
+    auto [minY, maxY] = std::ranges::minmax_element(points, [](const Point2D &a, const Point2D &b) noexcept { return a.y < b.y; });
 
     double dx = maxX->x - minX->x;
     double dy = maxY->y - minY->y;
@@ -130,36 +136,38 @@ inline std::vector<DelaunayTriangle> DelaunayTriangulation(std::span<const Point
             }
         }
 
-        std::erase_if(triangles, [&bad_triangles](const DelaunayTriangle &t) {
-                                           return std::find_if(bad_triangles.begin(), bad_triangles.end(),
-                                                               [&t](const DelaunayTriangle &bad) {
-                                                                   return std::abs(t.a.x - bad.a.x) < 1e-10 &&
-                                                                          std::abs(t.a.y - bad.a.y) < 1e-10 &&
-                                                                          std::abs(t.b.x - bad.b.x) < 1e-10 &&
-                                                                          std::abs(t.b.y - bad.b.y) < 1e-10 &&
-                                                                          std::abs(t.c.x - bad.c.x) < 1e-10 &&
-                                                                          std::abs(t.c.y - bad.c.y) < 1e-10;
-                                                               }) != bad_triangles.end();
-                                       });
+        std::erase_if(triangles, [&bad_triangles](const DelaunayTriangle &t) noexcept {
+            return std::find_if(bad_triangles.begin(), bad_triangles.end(),
+                                [&t](const DelaunayTriangle &bad) noexcept {
+                                    return std::abs(t.a.x - bad.a.x) < EPSILON_TRIANG &&
+                                           std::abs(t.a.y - bad.a.y) < EPSILON_TRIANG &&
+                                           std::abs(t.b.x - bad.b.x) < EPSILON_TRIANG &&
+                                           std::abs(t.b.y - bad.b.y) < EPSILON_TRIANG &&
+                                           std::abs(t.c.x - bad.c.x) < EPSILON_TRIANG &&
+                                           std::abs(t.c.y - bad.c.y) < EPSILON_TRIANG;
+                                }) != bad_triangles.end();
+        });
 
         for (const Edge &edge : polygon) {
             triangles.emplace_back(edge.p1, edge.p2, point);
         }
     }
-    std::erase_if(triangles, [&super1, &super2, &super3](const DelaunayTriangle &t) {
-                           return (std::abs(t.a.x - super1.x) < 1e-10 && std::abs(t.a.y - super1.y) < 1e-10) ||
-                                  (std::abs(t.a.x - super2.x) < 1e-10 && std::abs(t.a.y - super2.y) < 1e-10) ||
-                                  (std::abs(t.a.x - super3.x) < 1e-10 && std::abs(t.a.y - super3.y) < 1e-10) ||
-                                  (std::abs(t.b.x - super1.x) < 1e-10 && std::abs(t.b.y - super1.y) < 1e-10) ||
-                                  (std::abs(t.b.x - super2.x) < 1e-10 && std::abs(t.b.y - super2.y) < 1e-10) ||
-                                  (std::abs(t.b.x - super3.x) < 1e-10 && std::abs(t.b.y - super3.y) < 1e-10) ||
-                                  (std::abs(t.c.x - super1.x) < 1e-10 && std::abs(t.c.y - super1.y) < 1e-10) ||
-                                  (std::abs(t.c.x - super2.x) < 1e-10 && std::abs(t.c.y - super2.y) < 1e-10) ||
-                                  (std::abs(t.c.x - super3.x) < 1e-10 && std::abs(t.c.y - super3.y) < 1e-10);
-                       });
 
-    return triangles;
-}
+    std::erase_if(triangles, [&super1, &super2, &super3](const DelaunayTriangle &t) noexcept {
+        return (std::abs(t.a.x - super1.x) < EPSILON_TRIANG && std::abs(t.a.y - super1.y) < EPSILON_TRIANG) ||
+               (std::abs(t.a.x - super2.x) < EPSILON_TRIANG && std::abs(t.a.y - super2.y) < EPSILON_TRIANG) ||
+               (std::abs(t.a.x - super3.x) < EPSILON_TRIANG && std::abs(t.a.y - super3.y) < EPSILON_TRIANG) ||
+               (std::abs(t.b.x - super1.x) < EPSILON_TRIANG && std::abs(t.b.y - super1.y) < EPSILON_TRIANG) ||
+               (std::abs(t.b.x - super2.x) < EPSILON_TRIANG && std::abs(t.b.y - super2.y) < EPSILON_TRIANG) ||
+               (std::abs(t.b.x - super3.x) < EPSILON_TRIANG && std::abs(t.b.y - super3.y) < EPSILON_TRIANG) ||
+               (std::abs(t.c.x - super1.x) < EPSILON_TRIANG && std::abs(t.c.y - super1.y) < EPSILON_TRIANG) ||
+               (std::abs(t.c.x - super2.x) < EPSILON_TRIANG && std::abs(t.c.y - super2.y) < EPSILON_TRIANG) ||
+               (std::abs(t.c.x - super3.x) < EPSILON_TRIANG && std::abs(t.c.y - super3.y) < EPSILON_TRIANG);
+    });
+
+    return triangles; // Автоматически обернется в успешный std::expected
+};
+
 }  // namespace geometry::triangulation
 
 template <>
@@ -168,6 +176,8 @@ struct std::formatter<geometry::triangulation::DelaunayTriangle> {
 
     template <typename FormatContext>
     auto format(const geometry::triangulation::DelaunayTriangle &t, FormatContext &ctx) const {
-        return std::format_to(ctx.out(), "DelaunayTriangle({}, {}, {})", t.a, t.b, t.c);
+        // Чтобы скомпилировалось форматирование t.a, t.b, t.c, убедись, что в геометрии подключен их форматер
+        return std::format_to(ctx.out(), "DelaunayTriangle(Point2D({:.2f}, {:.2f}), Point2D({:.2f}, {:.2f}), Point2D({:.2f}, {:.2f}))", 
+                              t.a.x, t.a.y, t.b.x, t.b.y, t.c.x, t.c.y);
     }
 };

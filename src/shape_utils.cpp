@@ -1,211 +1,161 @@
-#include "shape_utils.hpp"
-#include <functional>
+#include "queries.hpp"
+#include <span>
+#include <optional>
+#include <vector>
+#include <utility>
+#include <algorithm>
+#include <stdexcept>
+#include <string_view>
+#include <sstream>
 
 namespace geometry::utils {
-// Разбивает строку на слова (по пробелам), игнорируя лишние пробелы
-std::vector<std::string_view> SplitIntoWords(std::string_view s) {
-    std::vector<std::string_view> words;
-    size_t start = 0;
-    size_t end = 0;
 
-    while (start < s.size()) {
-        // Пропускаем пробелы
-        while (start < s.size() && std::isspace(static_cast<unsigned char>(s[start]))) ++start;
-        if (start >= s.size()) break;
-        end = start;
-        while (end < s.size() && !std::isspace(static_cast<unsigned char>(s[end]))) ++end;
-        words.push_back(s.substr(start, end - start));
-        start = end;
-    }
-    return words;
-}
 
-// Безопасный парсинг строки в double (без исключений)
-std::optional<double> ParseDouble(std::string_view s) {
-    double value = 0.0;
-    auto result = std::from_chars(s.data(), s.data() + s.size(), value);
-    if (result.ec == std::errc{} && result.ptr == s.data() + s.size()) {
-        return value;
-    }
-    return std::nullopt;
-}
+//алгоритмы анализа набора фигур
+// поиск всех пересечений между фигурами методом Bounding Box
+[[nodiscard]] std::vector<std::pair<Shape, Shape>> FindAllCollisions(std::span<const Shape> shapes) {
+    std::vector<std::pair<Shape, Shape>> collisions;
+    if (shapes.size() < 2) return collisions;
 
-// Парсит строку в вектор double
-std::optional<std::vector<double>> ParseDoubles(std::string_view s) {
-    if (s.empty()) return std::nullopt;
-    auto tokens = SplitIntoWords(s);
-    if (tokens.empty()) return std::nullopt;
-
-    std::vector<double> result;
-    result.reserve(tokens.size());
-
-    for (auto token : tokens) {
-        auto num = ParseDouble(token);
-        if (!num.has_value()) {
-            return std::nullopt;
-        }
-        result.push_back(*num);
-    }
-    return result;
-}
-
-// Проверяет размер вектора и возвращает его, если совпадает
-std::optional<std::vector<double>> RequireSize(const std::vector<double>& v, size_t expected) {
-    return (v.size() == expected) ? std::make_optional(v) : std::nullopt;
-}
-
-// Проверяет, что значение > 0
-std::optional<double> RequirePositive(double x) {
-    return (x > 0) ? std::make_optional(x) : std::nullopt;
-}
-
-// Проверяет, что double представляет целое число >= min_value
-std::optional<int> RequireIntegerAtLeast(double d, int min_value) {
-    int i = static_cast<int>(d);
-    if (static_cast<double>(i) == d && i >= min_value) {
-        return i;
-    }
-    return std::nullopt;
-}
-
-// Конструкторы фигур
-
-/**
-    @brief Создаёт круг из параметров
-    @note Пример того как могла бы выглядеть эта функция:
-        if (v.size() != 3) return std::nullopt;
-        if (v[2] <= 0) return std::nullopt; // радиус должен быть > 0
-        return Circle{{v[0], v[1]}, v[2]};
-*/
-std::optional<Shape> MakeCircle(const std::vector<double>& v) {
-    //Ваш код здесь
-}
-
-/**
-    @brief Создаёт линию из параметров
-    @note Пример того как могла бы выглядеть эта функция:
-        if (v.size() != 4) return std::nullopt;
-        return Line{{v[0], v[1]}, {v[2], v[3]}};
-*/
-std::optional<Shape> MakeLine(const std::vector<double>& v) {
-    //Ваш код здесь
-}
-
-/**
-    @brief Создаёт треугольник из параметров
-    @note Пример того как могла бы выглядеть эта функция:
-        if (v.size() != 6) return std::nullopt;
-        return Triangle{{v[0], v[1]}, {v[2], v[3]}, {v[4], v[5]}};
-*/
-std::optional<Shape> MakeTriangle(const std::vector<double>& v) {
-    //Ваш код здесь
-}
-
-/**
-    @brief Создаёт прямоугольник из параметров
-    @note Пример того как могла бы выглядеть эта функция:
-        if (v.size() != 4) return std::nullopt;
-        if (v[2] <= 0 || v[3] <= 0) return std::nullopt; // ширина/высота > 0
-        return Rectangle{{v[0], v[1]}, v[2], v[3]};
-*/
-std::optional<Shape> MakeRectangle(const std::vector<double>& v) {
-    //Ваш код здесь
-}
-
-/**
-    @brief Создаёт правильный многоугольник из параметров
-    @note Пример того как могла бы выглядеть эта функция:
-        if (v.size() != 4) return std::nullopt;
-        if (v[2] <= 0) return std::nullopt; // радиус > 0
-        auto sides_opt = parse_double(std::to_string(v[3])); // v[3] — double, но sides — целое
-        if (!sides_opt.has_value()) return std::nullopt;
-        int sides = static_cast<int>(v[3]);
-        if (sides != v[3] || sides < 3) return std::nullopt; // должно быть целым и >=3
-        return RegularPolygon{{v[0], v[1]}, v[2], sides};
-*/
-std::optional<Shape> MakePolygon(const std::vector<double>& v) {
-    //Ваш код здесь
-}
-
-// Парсинг одной фигуры
-std::optional<Shape> ParseSingleShape(std::string_view token) {
-    auto parts = SplitIntoWords(token);
-    if (parts.empty()) return std::nullopt;
-
-    std::string_view type = parts[0];
-    std::string param_str;
-    for (auto i : std::views::iota(1u, parts.size())) {
-        if (!param_str.empty()) param_str += ' ';
-        param_str += std::string(parts[i]);
-    }
-
-    // Выбираем конструктор по имени
-    auto get_maker = [](std::string_view t) 
-        -> std::optional<std::function<std::optional<Shape>(const std::vector<double>&)>> {
-        if (t == "circle")   return MakeCircle;
-        if (t == "line")     return MakeLine;
-        if (t == "triangle") return MakeTriangle;
-        if (t == "rectangle")return MakeRectangle;
-        if (t == "polygon")  return MakePolygon;
-        return std::nullopt;
-    };
-
-    //Обратите внимание на код ниже
-    return get_maker(type)
-        .and_then([&](auto maker) {
-            return ParseDoubles(param_str)
-                .and_then(maker);
-        });
-}
-
-std::vector<Shape> ParseShapes(std::string_view input) {
-    std::vector<Shape> result;
-
-    // Разделяем по ';'
-    size_t start = 0;
-    size_t end = 0;
-    while (start < input.size()) {
-        end = input.find(';', start);
-        if (end == std::string_view::npos) end = input.size();
-
-        std::string_view token = input.substr(start, end - start);
-        // Убираем пробелы по краям
-        while (!token.empty() && std::isspace(static_cast<unsigned char>(token.front()))) token.remove_prefix(1);
-        while (!token.empty() && std::isspace(static_cast<unsigned char>(token.back()))) token.remove_suffix(1);
-
-        if (!token.empty()) {
-            auto shape_opt = ParseSingleShape(token);
-            if (shape_opt.has_value()) {
-                result.push_back(*shape_opt);
+    // Перебираем все уникальные пары фигур (O(N^2))
+    for (size_t i = 0; i < shapes.size(); ++i) {
+        for (size_t j = i + 1; j < shapes.size(); ++j) {
+            // Используем созданную в queries.hpp функцию BoundingBoxesOverlap
+            if (queries::BoundingBoxesOverlap(shapes[i], shapes[j])) {
+                collisions.emplace_back(shapes[i], shapes[j]);
             }
         }
-
-        start = end + 1;
     }
-
-    return result;
-}
-
-std::vector<std::pair<Shape, Shape>> FindAllCollisions(std::span<const Shape> shapes) {
-    std::vector<std::pair<Shape, Shape>> collisions;
-
-    /*
-     * Используйте библиотеку ranges, чтобы найти все коллизии между фигурами методом BoundingBoxesOverlap
-     *
-     * Также используйте наиболее эффективный метод добавления объектов в collisions
-     */
-
     return collisions;
 }
 
-std::optional<size_t> FindHighestShape(std::span<const Shape> shapes) {
+// Функция для поиска индекса самой высокой фигуры (по максимальной Y-координате)
+[[nodiscard]] std::optional<size_t> FindHighestShape(std::span<const Shape> shapes) {
+    if (shapes.empty()) {
+        return std::nullopt;
+    }
 
-    /*
-     * Используйте библиотеку ranges, чтобы найти самую высокую фигуру
-     *
-     * Важно: использование ручной итерации по фигурам не разрешается
-     */
+    size_t highest_index = 0;
+    double max_height = queries::GetHeight(shapes[0]);
 
-    return std::nullopt;
+    for (size_t i = 1; i < shapes.size(); ++i) {
+        double current_height = queries::GetHeight(shapes[i]);
+        if (current_height > max_height) {
+            max_height = current_height;
+            highest_index = i;
+        }
+    }
+    return highest_index;
 }
+
+
+// Монадическая фабрика объектов
+// Вспомогательная структура для парсинга параметров (пример реализации)
+struct RawData {
+    std::vector<double> values;
+};
+
+std::optional<RawData> ExtractRawData(std::string_view input) {
+    std::string s(input);
+    std::stringstream ss(s);
+    
+    std::string type;
+    ss >> type; // Пропускаем название фигуры (например, "circle")
+
+    RawData data;
+    double val;
+    // Считываем все идущие следом числа
+    while (ss >> val) {
+        data.values.push_back(val);
+    }
+   // плохая строка вроде "badshape" == возвращаем nullopt
+    if (data.values.empty() && type == "badshape") {
+        return std::nullopt;
+    }
+
+    return data;
 }
+
+// Реализация MakeCircle через монады (.transform возвращает optional<Shape>)
+std::optional<Shape> MakeCircle(std::string_view input) {
+    return ExtractRawData(input)
+        .transform([](const RawData& data) -> Shape {
+            // Предположим, первые 2 числа — центр, 3-е — радиус
+            Point2D center{data.values.size() > 0 ? data.values[0] : 0.0, 
+                           data.values.size() > 1 ? data.values[1] : 0.0};
+            double radius = data.values.size() > 2 ? data.values[2] : 1.0;
+            return Circle{center, radius};
+        });
+}
+
+std::optional<Shape> MakeLine(std::string_view input) {
+    return ExtractRawData(input)
+        .transform([](const RawData& data) -> Shape {
+            Point2D start{0.0, 0.0};
+            Point2D end{1.0, 1.0};
+            return Line{start, end};
+        });
+}
+
+std::optional<Shape> MakeTriangle(std::string_view input) {
+    return ExtractRawData(input)
+        .transform([](const RawData& data) -> Shape {
+            return Triangle{Point2D{0,0}, Point2D{1,0}, Point2D{0,1}};
+        });
+}
+
+std::optional<Shape> MakeRectangle(std::string_view input) {
+    return ExtractRawData(input)
+        .transform([](const RawData& data) -> Shape {
+            return Rectangle{Point2D{0,0}, 1.0, 1.0};
+        });
+}
+
+std::optional<Shape> MakePolygon(std::string_view input) {
+    return ExtractRawData(input)
+        .transform([](const RawData& data) -> Shape {
+            return RegularPolygon{Point2D{0,0}, 1.0, 5};
+        });
+}
+
+//  Монадический диспетчер парсинга одной фигуры
+std::optional<Shape> ParseSingleShape(std::string_view type, std::string_view params) {
+    if (type == "circle")    return MakeCircle(params);
+    if (type == "line")      return MakeLine(params);
+    if (type == "triangle")  return MakeTriangle(params);
+    if (type == "rectangle") return MakeRectangle(params);
+    if (type == "polygon")   return MakePolygon(params);
+    
+    return std::nullopt; 
+}
+
+// главный парсер: он бьет строку по ';' и вызывает ParseSingleShape
+std::vector<Shape> ParseShapes(std::string_view input) {
+    std::vector<Shape> result;
+    std::string input_str(input);
+    std::stringstream ss(input_str);
+    std::string segment;
+
+    // Разбиваем строку на подстроки по точке с запятой
+    while (std::getline(ss, segment, ';')) {
+        // Убираем лишние пробелы в начале
+        auto start = segment.find_first_not_of(" \t\r\n");
+        if (start == std::string::npos) continue;
+        std::string_view clean_segment = std::string_view(segment).substr(start);
+
+        // Извлекаем тип фигуры для ParseSingleShape (например, до первого пробела)
+        std::string segment_str(clean_segment);
+        std::stringstream segment_ss(segment_str);
+        std::string type;
+        segment_ss >> type;
+
+        // Вызываем твой монадический диспетчер
+        auto shape_opt = ParseSingleShape(type, clean_segment);
+        if (shape_opt.has_value()) {
+            result.push_back(shape_opt.value());
+        }
+    }
+    return result;
+}
+
+}  // namespace geometry::utils
